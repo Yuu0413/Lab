@@ -1,45 +1,72 @@
 import streamlit as st
 import pandas as pd
 
-#タイトルと見出し
-st.title("Demo App")
-st.header("This is test App")
+#タイトル
+st.title("調子判定アプリ(デモ版)")
 
-#数値の平均値を記録
-st.subheader("平均値")
-df1=pd.DataFrame({
-    "項目":["体温","睡眠時間"],
-    "数値" : [36.3,7.3]
-})
+#タブでページを切り替え
+tab1, tab2 = st.tabs(["平常時データ入力", "今日のデータ入力"])
 
-#その日の数値を入力
-st.subheader("今日の数値を入力して下さい")
-temp=st.number_input("体温を入力して下さい", min_value=35.0, max_value=40.0, value=36.3, step=0.1)
-sle_time=st.number_input("睡眠時間を入力して下さい", min_value=0.0, max_value=24.0, value=7.5, step=0.01)
+#平常時データ入力タブ
+with tab1:
+    st.subheader("平常時のデータを入力してください")
+    平熱 = st.number_input("平熱を入力してください", min_value=35.0, max_value=42.0, value=36.5, step=0.1)
+    平睡眠時間 = st.number_input("平常時の睡眠時間を入力してください", min_value=0.0, max_value=24.0, value=7.0, step=0.1)
+    平脈拍 = st.number_input("平常時の脈拍を入力してください", min_value=0, max_value=200, value=70, step=1)
 
-#入力された数値を記録
-df2=pd.DataFrame({
-    "項目":["体温","睡眠時間"],
-    "数値" : [temp,sle_time]
-})
+    if st.button("平常時データを記録"):
+        #データをセッションに保存
+        st.session_state["平常時データ"] = pd.DataFrame({
+            "項目": ["体温", "睡眠時間", "脈拍"],
+            "数値": [平熱, 平睡眠時間, 平脈拍]
+        })
+        st.success("平常時のデータを記録しました")
 
-#df1とdf2を比較
-if st.button("平均と比較"):
-    df_merge=pd.merge(df1, df2, on="項目",suffixes=("_df1","_df2"))
-    df_merge["数値差"]=df_merge["数値_df2"]-df_merge["数値_df1"]
-    st.write(df_merge)
+    #記録済みデータの表示
+    if "平常時データ" in st.session_state:
+        st.write("記録済みの平常時データ:")
+        st.write(st.session_state["平常時データ"])
 
-#数値差の値によってコメントを表示
-    if df_merge["数値差"][0]>0.5:
-        st.write("体温が高いです。")
-    elif df_merge["数値差"][0]<-0.5:
-        st.write("体温が低いです。")
-    else:
-        st.write("体温は平均値です。")
+#今日のデータ入力タブ
+with tab2:
+    st.subheader("今日のデータを入力してください")
+    体温 = st.number_input("体温を入力してください", min_value=35.0, max_value=42.0, value=36.5, step=0.1)
+    睡眠時間 = st.number_input("睡眠時間を入力してください", min_value=0.0, max_value=24.0, value=7.0, step=0.1)
+    脈拍 = st.number_input("脈拍を入力してください", min_value=0, max_value=200, value=70, step=1)
+    体の不調 = st.checkbox("体調不良ですか？")
 
-    if df_merge["数値差"][1]>1.0:
-        st.write("睡眠時間が短いです。")
-    elif df_merge["数値差"][1]<-1.0:
-        st.write("睡眠時間が長いです。")
-    else:
-        st.write("睡眠時間は平均値です。")
+    if st.button("今日の調子を判定"):
+        #平常時データが記録されていない場合の処理
+        if "平常時データ" not in st.session_state:
+            st.error("まずは平常時のデータを記録してください（左のタブで入力）")
+        else:
+            #平常時データと今日のデータを比較
+            df1 = st.session_state["平常時データ"]
+            df2 = pd.DataFrame({
+                "項目": ["体温", "睡眠時間", "脈拍"],
+                "数値": [体温, 睡眠時間, 脈拍]
+            })
+
+            #判定条件
+            判定結果 = []
+            if 体温 >= 37.5:
+                判定結果.append("体温が平均以上")
+            if 体の不調:
+                判定結果.append("体の不調にチェックが入っている")
+            if 脈拍 > 80:
+                判定結果.append("脈拍が平均より速い")
+
+            #体温、体の不調、脈拍に基づく判定
+            if len([c for c in 判定結果 if c in ["体温が平均以上", "体の不調にチェックが入っている", "脈拍が平均より速い"]]) >= 2:
+                st.error("体調が悪いようです。もし風邪症状がある場合は病院に行くことをおすすめします。")
+            #睡眠時間の判定
+            elif 睡眠時間 < 5:
+                st.warning("睡眠時間が足りていません。ゆっくりと睡眠を取ることをおすすめします。")
+            #脈拍の判定
+            elif 脈拍 < 60 or 脈拍 > 81:
+                if 脈拍 <= 50 or 脈拍 >= 120:
+                    st.error("脈拍が正常範囲外です。病院で診察を受けることをおすすめします。")
+                else:
+                    st.warning("脈拍が正常範囲外です。安静にすることをおすすめします。")
+            else:
+                st.success("問題ありません！良い一日を過ごして下さい！")
