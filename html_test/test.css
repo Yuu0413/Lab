@@ -1,0 +1,13 @@
+@charset "UTF-8";
+
+h1{
+    color:white;
+    background-color:lightblue;
+    border:4px solid skyblue;
+}
+
+h2{
+    color:lightblue;
+    background-color:white;
+    border:4px solid skyblue;
+}
